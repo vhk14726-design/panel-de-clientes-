@@ -14,7 +14,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const cleanCI = String(cedula).replace(/\D/g, "");
 
-    // Construcción de la URL final pegando la cédula al final del hash
     let finalUrl = VERIFY_URL.trim();
     if (!finalUrl.endsWith('/')) finalUrl += '/';
     finalUrl += cleanCI;
@@ -41,31 +40,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const rawText = await response.text();
-    const cleanT = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    
+    // Función de limpieza profunda para evitar "-->" y otros residuos
+    const cleanT = (s: string) => {
+        return s.replace(/<[^>]*>/g, '') // Quitar HTML
+                .replace(/-->/g, '')     // Quitar cierres de comentarios
+                .replace(/&nbsp;/g, ' ') // Espacios
+                .replace(/\s+/g, ' ')    // Colapsar espacios
+                .trim();
+    };
 
-    // Lógica de extracción (Busca patrones de nombre en el HTML devuelto por ese hash)
-    let nombre = "";
-    const patterns = [
-        /Nombre[s]?[:\s]+(?:<\/b>|<td>|<span>)?\s*([^<|\n|\r|;]+)/i,
-        /<td>\s*Nombres:\s*<\/td>\s*<td>\s*([^<]+)/i,
-        /cliente[:\s]+([^<]+)/i
-    ];
+    // Buscamos los 3 campos solicitados
+    const extractField = (label: string) => {
+        const regex = new RegExp(`${label}[:\s]+(?:<\/b>|<td>|<span>|<b>)?\s*([^<|\n|\r|;]+)`, 'i');
+        const match = rawText.match(regex);
+        return match && match[1] ? cleanT(match[1]) : "";
+    };
 
-    for (const p of patterns) {
-        const match = rawText.match(p);
-        if (match && match[1]) {
-            nombre = cleanT(match[1]);
-            break;
-        }
-    }
+    const nombres = extractField("Nombres");
+    const apellidos = extractField("Apellidos");
+    const fechaNac = extractField("Fecha de Nacimiento");
 
-    if (nombre) {
+    if (nombres || apellidos) {
         return res.status(200).json({
             ok: true,
             result: {
-                nombre: nombre.toUpperCase(),
+                nombres: nombres.toUpperCase() || "NO ENCONTRADO",
+                apellidos: apellidos.toUpperCase() || "NO ENCONTRADO",
                 cedula: cleanCI,
-                fecha_nacimiento: "SISTEMA GFV",
+                fecha_nacimiento: fechaNac || "NO DISPONIBLE",
                 estado: "ACTIVO"
             }
         });
@@ -73,8 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(404).json({ 
         ok: false, 
-        mensaje: "Cédula no encontrada o sin datos disponibles en GFV.",
-        debug: rawText.substring(0, 300)
+        mensaje: "No se pudieron extraer los datos. Verifica la sesión o el formato de la página.",
+        debug: rawText.substring(0, 500)
     });
 
   } catch (e: any) {
