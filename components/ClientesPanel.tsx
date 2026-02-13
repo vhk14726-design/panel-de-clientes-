@@ -5,20 +5,17 @@ import {
   Loader2, 
   RefreshCw, 
   User, 
-  Trash2, 
-  Edit3, 
   FilterX,
   ShieldCheck,
-  Phone,
-  ArrowRight,
   ShieldQuestion,
   X,
   CheckCircle2,
   AlertCircle,
   Lock,
-  ShieldAlert,
   Copy,
-  Info
+  Info,
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 import { supabase } from '../supabase.ts';
 
@@ -48,6 +45,7 @@ const ClientesPanel: React.FC = () => {
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<any>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!isUnlocked) return;
@@ -95,6 +93,7 @@ const ClientesPanel: React.FC = () => {
     setVerifying(true);
     setVerifyError(null);
     setVerifyResult(null);
+    setDebugInfo(null);
 
     try {
       const r = await fetch("/api/cedula/verify", {
@@ -103,7 +102,10 @@ const ClientesPanel: React.FC = () => {
         body: JSON.stringify({ cedula: verifyId }),
       });
       const j = await r.json();
-      if (!j.ok) throw new Error(j.mensaje || "Error en el servidor");
+      if (!j.ok) {
+        setDebugInfo(j.debug || null);
+        throw new Error(j.mensaje || "Error en el servidor");
+      }
       setVerifyResult(j.result);
     } catch (err: any) {
       setVerifyError(err.message);
@@ -260,7 +262,7 @@ const ClientesPanel: React.FC = () => {
                        <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Validación de Identidad en Tiempo Real</p>
                     </div>
                  </div>
-                 <button onClick={() => { setShowVerifyModal(false); setVerifyResult(null); setVerifyId(""); }} className="w-12 h-12 bg-white/5 hover:bg-red-500/20 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 transition-all border border-white/5">
+                 <button onClick={() => { setShowVerifyModal(false); setVerifyResult(null); setVerifyId(""); setVerifyError(null); setDebugInfo(null); }} className="w-12 h-12 bg-white/5 hover:bg-red-500/20 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 transition-all border border-white/5">
                     <X size={20} />
                  </button>
               </div>
@@ -273,6 +275,7 @@ const ClientesPanel: React.FC = () => {
                          type="text"
                          value={verifyId}
                          onChange={(e) => setVerifyId(e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && handleVerifyCI()}
                          placeholder="Ingresa Cédula..."
                          className="w-full bg-black border border-white/10 rounded-[1.5rem] py-6 pl-16 pr-6 text-xl font-black text-white uppercase outline-none focus:border-purple-500 transition-all"
                        />
@@ -280,16 +283,40 @@ const ClientesPanel: React.FC = () => {
                     <button 
                       onClick={handleVerifyCI}
                       disabled={verifying || !verifyId}
-                      className="bg-purple-600 hover:bg-purple-700 text-white h-[76px] px-10 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+                      className="bg-purple-600 hover:bg-purple-700 text-white h-[76px] px-10 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 flex items-center justify-center"
                     >
                       {verifying ? <Loader2 className="animate-spin" /> : 'Consultar'}
                     </button>
                  </div>
 
                  {verifyError && (
-                    <div className="flex items-center gap-4 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-500 animate-in shake">
-                       <AlertCircle size={24} />
-                       <p className="text-xs font-black uppercase tracking-widest">{verifyError}</p>
+                    <div className="space-y-4 animate-in shake">
+                       <div className="flex items-center gap-4 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-500">
+                          <AlertCircle size={24} />
+                          <p className="text-xs font-black uppercase tracking-widest">{verifyError}</p>
+                       </div>
+                       
+                       {verifyError.includes("Sesión expirada") && (
+                         <div className="bg-[#121212] p-8 rounded-[2rem] border border-white/5 space-y-4">
+                            <div className="flex items-center gap-3 text-purple-400">
+                               <Settings size={18} />
+                               <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Reparación</h5>
+                            </div>
+                            <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold">
+                               1. Abre GFV en tu navegador.<br/>
+                               2. Presiona F12 > pestaña "Application" > Cookies.<br/>
+                               3. Copia el valor de <b>PHPSESSID</b>.<br/>
+                               4. Pégalo en Vercel como <b>GFV_COOKIE</b>.
+                            </p>
+                         </div>
+                       )}
+
+                       {debugInfo && (
+                         <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[9px] text-gray-600 overflow-hidden">
+                           <p className="mb-2 opacity-50">Respuesta cruda del servidor:</p>
+                           {debugInfo}
+                         </div>
+                       )}
                     </div>
                  )}
 
@@ -302,7 +329,7 @@ const ClientesPanel: React.FC = () => {
                           
                           <div className="space-y-8">
                              <div>
-                                <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">NOMBRE COMPLETO</p>
+                                <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">CIUDADANO IDENTIFICADO</p>
                                 <div className="flex items-center justify-between">
                                    <h4 className="text-3xl font-black text-white uppercase italic tracking-tighter">
                                       {verifyResult.nombre} {verifyResult.apellido}
@@ -338,7 +365,7 @@ const ClientesPanel: React.FC = () => {
                        </div>
                        
                        <div className="flex items-center gap-3 text-[9px] font-black text-gray-700 uppercase tracking-[0.2em] bg-white/5 p-4 rounded-2xl border border-white/5">
-                          <Info size={14} /> La información proviene directamente de la base de datos de GFV Paraguay.
+                          <Info size={14} /> Sistema de Inteligencia Híbrido (HTML/JSON Scraper v2.1)
                        </div>
                     </div>
                  )}
