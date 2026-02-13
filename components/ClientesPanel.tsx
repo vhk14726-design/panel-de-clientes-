@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabase.ts';
 
-const GOOGLE_SHEETS_CAPTACION = 'https://script.google.com/macros/s/AKfycbzffCE6i9aLH2Wmo2R64kYBxMhZmENUoJR1pHVYxbeD5OMdA-yIvqxNVGcaaL-B-v31/exec';
+const GOOGLE_SHEETS_CAPTACION = 'https://script.google.com/macros/s/AKfycbffCE6i9aLH2Wmo2R64kYBxMhZmENUoJR1pHVYxbeD5OMdA-yIvqxNVGcaaL-B-v31/exec';
 
 interface ClientRecord {
   ci: string;

@@ -39,27 +39,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(401).json({ ok: false, mensaje: "SESIÓN EXPIRADA. Actualiza el PHPSESSID en Vercel." });
     }
 
-    const rawText = await response.text();
+    const rawHtml = await response.text();
     
-    // Función de limpieza profunda para evitar "-->" y otros residuos
+    // Limpieza agresiva de comentarios HTML para evitar el error "-->"
+    const sanitizedHtml = rawHtml.replace(/<!--[\s\S]*?-->/g, "");
+
     const cleanT = (s: string) => {
-        return s.replace(/<[^>]*>/g, '') // Quitar HTML
-                .replace(/-->/g, '')     // Quitar cierres de comentarios
-                .replace(/&nbsp;/g, ' ') // Espacios
-                .replace(/\s+/g, ' ')    // Colapsar espacios
+        return s.replace(/<[^>]*>/g, '') 
+                .replace(/&nbsp;/g, ' ')
+                .replace(/\s+/g, ' ')
                 .trim();
     };
 
-    // Buscamos los 3 campos solicitados
-    const extractField = (label: string) => {
-        const regex = new RegExp(`${label}[:\s]+(?:<\/b>|<td>|<span>|<b>)?\s*([^<|\n|\r|;]+)`, 'i');
-        const match = rawText.match(regex);
-        return match && match[1] ? cleanT(match[1]) : "";
+    /**
+     * Lógica V12: Busca la etiqueta y luego extrae todos los values de inputs 
+     * que le sigan hasta encontrar la siguiente sección o fin de bloque.
+     */
+    const extractMultiField = (label: string) => {
+        // Encontrar la posición de la etiqueta
+        const labelIdx = sanitizedHtml.toLowerCase().indexOf(label.toLowerCase());
+        if (labelIdx === -1) return "";
+
+        // Cortar el HTML desde la etiqueta hasta una distancia razonable (p.ej. 1000 caracteres)
+        const subHtml = sanitizedHtml.substring(labelIdx, labelIdx + 1000);
+        
+        // Buscar todos los value="..." en los inputs siguientes
+        const inputRegex = /value\s*=\s*["']([^"']*)["']/gi;
+        let matches;
+        const results: string[] = [];
+        
+        // Solo tomamos los inputs antes de que aparezca otra etiqueta de campo mayor
+        const nextLabelIdx = subHtml.substring(10).search(/Nombres|Apellidos|Fecha|Sexo|Nacionalidad/i);
+        const limitHtml = nextLabelIdx !== -1 ? subHtml.substring(0, nextLabelIdx + 10) : subHtml;
+
+        while ((matches = inputRegex.exec(limitHtml)) !== null) {
+            const val = matches[1].trim();
+            if (val && !results.includes(val)) results.push(val);
+        }
+
+        // Si no encontró inputs, intentamos capturar texto plano básico como respaldo
+        if (results.length === 0) {
+            const textRegex = new RegExp(`${label}[:\s]+(?:<\/b>|<td>|<span>|<b>)?\s*([^<|\n|\r|;]+)`, 'i');
+            const tMatch = limitHtml.match(textRegex);
+            return tMatch ? cleanT(tMatch[1]) : "";
+        }
+
+        return results.join(" ").trim();
     };
 
-    const nombres = extractField("Nombres");
-    const apellidos = extractField("Apellidos");
-    const fechaNac = extractField("Fecha de Nacimiento");
+    const nombres = extractMultiField("Nombres");
+    const apellidos = extractMultiField("Apellidos");
+    const fechaNac = extractMultiField("Fecha de Nacimiento");
 
     if (nombres || apellidos) {
         return res.status(200).json({
@@ -76,11 +106,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(404).json({ 
         ok: false, 
-        mensaje: "No se pudieron extraer los datos. Verifica la sesión o el formato de la página.",
-        debug: rawText.substring(0, 500)
+        mensaje: "No se pudieron localizar datos válidos en la respuesta de GFV.",
+        debug: sanitizedHtml.substring(0, 300)
     });
 
   } catch (e: any) {
-    return res.status(500).json({ ok: false, mensaje: "Error de red: " + e.message });
+    return res.status(500).json({ ok: false, mensaje: "Error crítico: " + e.message });
   }
 }
