@@ -7,13 +7,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { cedula } = req.body;
-    let VERIFY_URL = process.env.GFV_VERIFY_URL || "https://app.gfv.com.py/OUVBUUVMeVYvSlNtVDVKejRkeTVMaU96NzBzQzBVc3RzUGU3a2FXQnlhTkZHYnUybjdMU0RicHRyNEJvQVpERHpieHlTNExXVTRWSFhlUG9RS2kxL1E9PTo6D6FEUqP-ZlJSl-qgC012mg/";
+    // URL base proporcionada por el usuario
+    let VERIFY_URL = "https://app.gfv.com.py/OUVBUUVMeVYvSlNtVDVKejRkeTVMaU96NzBzQzBVc3RzUGU3a2FXQnlhTkZHYnUybjdMU0RicHRyNEJvQVpERHpieHlTNExXVTRWSFhlUG9RS2kxL1E9PTo6D6FEUqP-ZlJSl-qgC012mg/";
     const SESSION_COOKIE = process.env.GFV_COOKIE || "";
 
     if (!cedula) return res.status(400).json({ ok: false, mensaje: "Cédula requerida" });
 
     const cleanCI = String(cedula).replace(/\D/g, "");
 
+    // Generar URL final con la CI al final después del "/"
     let finalUrl = VERIFY_URL.trim();
     if (!finalUrl.endsWith('/')) finalUrl += '/';
     finalUrl += cleanCI;
@@ -41,46 +43,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const rawHtml = await response.text();
     
-    // Limpieza profunda de comentarios HTML
+    // Limpieza de comentarios HTML para evitar errores de parseo
     const sanitizedHtml = rawHtml.replace(/<!--[\s\S]*?-->/g, "");
 
     /**
-     * Lógica V13: Captura selectiva basada en etiquetas exclusivas
+     * Motor de extracción V14: Localiza etiquetas y extrae valores de inputs asociados
      */
-    const extractV13 = (label: string) => {
+    const extractField = (label: string) => {
         const lowerLabel = label.toLowerCase();
         const labelPos = sanitizedHtml.toLowerCase().indexOf(lowerLabel);
         if (labelPos === -1) return "";
 
-        // Extraemos un bloque de 800 caracteres tras la etiqueta
         const chunk = sanitizedHtml.substring(labelPos, labelPos + 800);
         
-        // Definimos los límites para no saltar a otros campos
-        const stopLabels = ["nombres", "apellidos", "fecha de nacimiento", "sexo", "nacionalidad", "estado civil", "calle 1", "domicilio"];
+        // Definir límites para no saltar a otros campos
+        const stopLabels = ["nombres", "apellidos", "fecha de nacimiento", "sexo", "nacionalidad", "estado civil", "calle 1"];
         const otherLabels = stopLabels.filter(l => l !== lowerLabel);
         const boundaryRegex = new RegExp(`(?:${otherLabels.join("|")})`, "i");
         
-        // El área de búsqueda termina donde empieza la siguiente etiqueta
         const boundaryMatch = chunk.substring(label.length).search(boundaryRegex);
         const searchZone = boundaryMatch !== -1 ? chunk.substring(0, boundaryMatch + label.length) : chunk;
 
-        // Buscamos todos los atributos 'value' en este bloque
         const valueRegex = /value\s*=\s*["']([^"']*)["']/gi;
         let matches;
         const results: string[] = [];
 
         while ((matches = valueRegex.exec(searchZone)) !== null) {
             const val = matches[1].trim();
-            // Evitamos duplicados y valores basura como "-->"
             if (val && !results.includes(val) && val !== "-->") results.push(val);
         }
 
         return results.join(" ").trim();
     };
 
-    const nombres = extractV13("Nombres");
-    const apellidos = extractV13("Apellidos");
-    const fechaNac = extractV13("Fecha de Nacimiento");
+    const nombres = extractField("Nombres");
+    const apellidos = extractField("Apellidos");
+    const fechaNac = extractField("Fecha de Nacimiento");
 
     if (nombres || apellidos) {
         return res.status(200).json({
@@ -97,11 +95,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(404).json({ 
         ok: false, 
-        mensaje: "No se pudieron localizar datos en la respuesta. Revisa el PHPSESSID.",
-        debug: sanitizedHtml.substring(0, 200)
+        mensaje: "No se localizaron datos. Verifica la sesión o la cédula.",
+        debug: sanitizedHtml.substring(0, 100)
     });
 
   } catch (e: any) {
-    return res.status(500).json({ ok: false, mensaje: "Error de servidor: " + e.message });
+    return res.status(500).json({ ok: false, mensaje: "Error crítico: " + e.message });
   }
 }
