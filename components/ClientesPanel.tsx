@@ -304,7 +304,7 @@ const ClientesPanel: React.FC = () => {
                             </div>
                             <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold">
                                1. Abre GFV en tu navegador.<br/>
-                               2. Presiona F12 > pestaña "Application" > Cookies.<br/>
+                               2. Presiona F12 &gt; pestaña "Application" &gt; Cookies.<br/>
                                3. Copia el valor de <b>PHPSESSID</b>.<br/>
                                4. Pégalo en Vercel como <b>GFV_COOKIE</b>.
                             </p>
