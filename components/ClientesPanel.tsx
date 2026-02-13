@@ -14,9 +14,10 @@ import {
   Lock,
   Copy,
   Info,
-  Settings,
-  Terminal,
-  ExternalLink
+  Scan,
+  Database,
+  Fingerprint,
+  Zap
 } from 'lucide-react';
 import { supabase } from '../supabase.ts';
 
@@ -44,9 +45,9 @@ const ClientesPanel: React.FC = () => {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyId, setVerifyId] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [verifyStep, setVerifyStep] = useState("");
   const [verifyResult, setVerifyResult] = useState<any>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!isUnlocked) return;
@@ -94,7 +95,14 @@ const ClientesPanel: React.FC = () => {
     setVerifying(true);
     setVerifyError(null);
     setVerifyResult(null);
-    setDebugInfo(null);
+    
+    // Simulación de pasos para "que se vea bonito"
+    const steps = ["Iniciando protocolos...", "Conectando con GFV Node...", "Buscando hash de identidad...", "Extrayendo metadatos..."];
+    
+    for (const step of steps) {
+        setVerifyStep(step);
+        await new Promise(r => setTimeout(r, 600));
+    }
 
     try {
       const r = await fetch("/api/cedula/verify", {
@@ -103,15 +111,13 @@ const ClientesPanel: React.FC = () => {
         body: JSON.stringify({ cedula: verifyId }),
       });
       const j = await r.json();
-      if (!j.ok) {
-        setDebugInfo(j.debug || null);
-        throw new Error(j.mensaje || "Error en el servidor");
-      }
+      if (!j.ok) throw new Error(j.mensaje || "Identidad no encontrada");
       setVerifyResult(j.result);
     } catch (err: any) {
       setVerifyError(err.message);
     } finally {
       setVerifying(false);
+      setVerifyStep("");
     }
   };
 
@@ -145,14 +151,11 @@ const ClientesPanel: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in duration-700">
         <div className="bg-[#0d0d0d] border border-white/5 p-12 rounded-[3rem] shadow-2xl max-w-md w-full text-center space-y-8 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-purple-600/10 transition-colors"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
           <div className="w-20 h-20 bg-purple-600/10 rounded-3xl flex items-center justify-center mx-auto border border-purple-500/20 shadow-2xl animate-bounce">
             <Lock className="text-purple-500" size={32} />
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Área Restringida</h2>
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Introduce la clave del módulo</p>
-          </div>
+          <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Área Restringida</h2>
           <form onSubmit={handleUnlock} className="space-y-6">
             <input 
               type="password"
@@ -162,7 +165,7 @@ const ClientesPanel: React.FC = () => {
               placeholder="Contraseña del módulo..."
               className={`w-full bg-black/40 border rounded-2xl py-4 px-6 text-sm text-white text-center focus:outline-none transition-all font-mono tracking-widest ${passError ? 'border-red-500 animate-shake' : 'border-white/10 focus:border-purple-500/40'}`}
             />
-            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-purple-600/20 transition-all active:scale-95">
+            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl transition-all">
               Desbloquear Módulo
             </button>
           </form>
@@ -176,13 +179,13 @@ const ClientesPanel: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">Administración de Clientes</h2>
-          <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-2 mt-2">
-            <ShieldCheck size={12} className="text-purple-500" /> Control Centralizado de Registros
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
+            <ShieldCheck size={12} className="text-purple-500" /> Control Centralizado {new Date().getFullYear()}
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => setShowVerifyModal(true)} className="bg-purple-600/10 border border-purple-500/20 px-8 py-4 rounded-2xl flex items-center gap-3 text-[10px] font-black text-purple-400 uppercase tracking-widest hover:bg-purple-600/20 transition-all active:scale-95 shadow-lg shadow-purple-600/5">
-            <ShieldQuestion size={16} /> Verificador GFV
+          <button onClick={() => setShowVerifyModal(true)} className="bg-purple-600/10 border border-purple-500/20 px-8 py-4 rounded-2xl flex items-center gap-3 text-[10px] font-black text-purple-400 uppercase tracking-widest hover:bg-purple-600/20 transition-all shadow-lg shadow-purple-600/5 active:scale-95">
+            <ShieldQuestion size={16} /> Verificador Inteligente
           </button>
           <button onClick={fetchData} disabled={loading} className="bg-[#1c1c1c] border border-white/5 px-8 py-4 rounded-2xl flex items-center gap-3 text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95">
             {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />} Sincronizar Maestro
@@ -214,7 +217,6 @@ const ClientesPanel: React.FC = () => {
                 <th className="py-10 px-12">ORIGEN</th>
                 <th className="py-10">CI</th>
                 <th className="py-10">NOMBRE</th>
-                <th className="py-10">RUBRO</th>
                 <th className="py-10">ASESOR</th>
                 <th className="py-10 px-12 text-right">GESTIÓN</th>
               </tr>
@@ -234,11 +236,10 @@ const ClientesPanel: React.FC = () => {
                       <span className="text-[10px] text-gray-500 font-bold">{client.telefono}</span>
                     </div>
                   </td>
-                  <td className="py-10 text-[10px] font-black text-gray-400 uppercase tracking-widest">{client.rubro}</td>
                   <td className="py-10 text-xs font-black text-white italic">{client.agente}</td>
                   <td className="py-10 px-12 text-right">
                     <button onClick={() => { setVerifyId(client.ci); setShowVerifyModal(true); }} className="p-3 bg-white/5 hover:bg-purple-600/20 text-gray-500 hover:text-purple-500 rounded-xl border border-white/5 transition-all">
-                      <ShieldQuestion size={18} />
+                      <Scan size={18} />
                     </button>
                   </td>
                 </tr>
@@ -250,127 +251,125 @@ const ClientesPanel: React.FC = () => {
       </div>
 
       {showVerifyModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
-           <div className="bg-[#080808] w-full max-w-2xl rounded-[3.5rem] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 my-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+           <div className="bg-[#080808] w-full max-w-xl rounded-[3.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-purple-600/10 to-transparent">
                  <div className="flex items-center gap-6">
-                    <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-600/20">
-                       <ShieldCheck className="text-white" size={28} />
+                    <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-600/20 relative overflow-hidden group">
+                       <ShieldCheck className="text-white relative z-10" size={28} />
+                       <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
                     </div>
                     <div>
-                       <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">Inteligencia GFV</h3>
-                       <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Validación de Identidad en Tiempo Real</p>
+                       <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">Scanner GFV</h3>
+                       <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Protocolo de Identidad Nacional</p>
                     </div>
                  </div>
-                 <button onClick={() => { setShowVerifyModal(false); setVerifyResult(null); setVerifyId(""); setVerifyError(null); setDebugInfo(null); }} className="w-12 h-12 bg-white/5 hover:bg-red-500/20 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 transition-all border border-white/5">
+                 <button onClick={() => { setShowVerifyModal(false); setVerifyResult(null); setVerifyId(""); setVerifyError(null); }} className="w-12 h-12 bg-white/5 hover:bg-red-500/20 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 transition-all">
                     <X size={20} />
                  </button>
               </div>
 
               <div className="p-10 space-y-10">
-                 <div className="flex items-center gap-4">
-                    <div className="relative flex-1">
-                       <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={20} />
-                       <input 
-                         type="text"
-                         value={verifyId}
-                         onChange={(e) => setVerifyId(e.target.value)}
-                         onKeyDown={(e) => e.key === 'Enter' && handleVerifyCI()}
-                         placeholder="Ingresa Cédula..."
-                         className="w-full bg-black border border-white/10 rounded-[1.5rem] py-6 pl-16 pr-6 text-xl font-black text-white uppercase outline-none focus:border-purple-500 transition-all"
-                       />
+                 {!verifying && !verifyResult && (
+                    <div className="space-y-8 animate-in fade-in duration-500">
+                        <div className="relative">
+                            <Fingerprint className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={20} />
+                            <input 
+                                type="text"
+                                value={verifyId}
+                                onChange={(e) => setVerifyId(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleVerifyCI()}
+                                placeholder="Ingresar Cédula..."
+                                className="w-full bg-black border border-white/10 rounded-[1.5rem] py-6 pl-16 pr-6 text-2xl font-black text-white uppercase outline-none focus:border-purple-500 transition-all text-center"
+                            />
+                        </div>
+                        <button 
+                            onClick={handleVerifyCI}
+                            disabled={!verifyId}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all active:scale-95 disabled:opacity-30 shadow-xl shadow-purple-600/20"
+                        >
+                            Ejecutar Análisis
+                        </button>
+                        <div className="flex items-center gap-2 justify-center text-[10px] font-black text-gray-700 uppercase tracking-widest">
+                            <Info size={12} /> Consultando base de datos gubernamental encriptada
+                        </div>
                     </div>
-                    <button 
-                      onClick={handleVerifyCI}
-                      disabled={verifying || !verifyId}
-                      className="bg-purple-600 hover:bg-purple-700 text-white h-[76px] px-10 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 flex items-center justify-center"
-                    >
-                      {verifying ? <Loader2 className="animate-spin" /> : 'Consultar'}
-                    </button>
-                 </div>
+                 )}
+
+                 {verifying && (
+                    <div className="py-20 flex flex-col items-center justify-center space-y-10 animate-in zoom-in-95">
+                        <div className="relative w-40 h-40">
+                            {/* Radar Animation */}
+                            <div className="absolute inset-0 border-4 border-purple-500/10 rounded-full"></div>
+                            <div className="absolute inset-0 border-t-4 border-purple-500 rounded-full animate-spin"></div>
+                            <div className="absolute inset-4 border-2 border-purple-500/20 rounded-full animate-pulse"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Scan size={48} className="text-purple-500 animate-pulse" />
+                            </div>
+                        </div>
+                        <div className="text-center space-y-3">
+                            <p className="text-xl font-black text-white uppercase italic tracking-tighter animate-pulse">{verifyStep}</p>
+                            <div className="flex gap-1 justify-center">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                            </div>
+                        </div>
+                    </div>
+                 )}
 
                  {verifyError && (
-                    <div className="space-y-6 animate-in shake">
-                       <div className="flex items-center gap-4 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-500">
-                          <AlertCircle size={24} />
-                          <p className="text-[11px] font-black uppercase tracking-widest">{verifyError}</p>
-                       </div>
-                       
-                       <div className="bg-[#121212] p-8 rounded-[2rem] border border-white/5 space-y-6">
-                          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                             <div className="flex items-center gap-3 text-purple-400">
-                                <Settings size={18} />
-                                <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Configuración GFV</h5>
-                             </div>
-                          </div>
-                          <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold space-y-3">
-                             1. En GFV, haz una consulta y ve a la pestaña <b>Network</b>.<br/>
-                             2. Busca la petición con el número de cédula.<br/>
-                             3. Haz clic derecho &gt; <b>Copy URL</b>.<br/>
-                             4. Pega esa URL en <b>GFV_VERIFY_URL</b> de Vercel (quítale el número de CI al final).<br/>
-                             5. No olvides actualizar el <b>GFV_COOKIE</b> con el PHPSESSID actual.
-                          </p>
-                          <a href="https://app.gfv.com.py/" target="_blank" className="flex items-center justify-center gap-2 w-full py-4 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all border border-white/5">
-                             Ir a GFV <ExternalLink size={14} />
-                          </a>
-                       </div>
-
-                       {debugInfo && (
-                         <div className="space-y-2">
-                           <div className="flex items-center gap-2 text-[9px] font-black text-gray-700 uppercase tracking-widest">
-                              <Terminal size={14} /> Vista Previa de la Respuesta (Debug)
-                           </div>
-                           <div className="p-4 bg-black/80 rounded-xl border border-white/5 font-mono text-[9px] text-gray-500 overflow-hidden break-all max-h-[150px] overflow-y-auto">
-                             {debugInfo}
-                           </div>
-                         </div>
-                       )}
+                    <div className="animate-in shake duration-300 space-y-6">
+                        <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-[2rem] flex flex-col items-center text-center gap-4">
+                            <AlertCircle size={40} className="text-red-500" />
+                            <h4 className="text-lg font-black text-white uppercase tracking-tighter">{verifyError}</h4>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase leading-relaxed">Verifica el número e intenta nuevamente. Si el error persiste, la sesión GFV podría estar vencida.</p>
+                        </div>
+                        <button onClick={() => { setVerifyError(null); setVerifyId(""); }} className="w-full bg-white/5 hover:bg-white/10 py-4 rounded-xl text-[10px] font-black uppercase text-white tracking-widest border border-white/10 transition-all">Reintentar</button>
                     </div>
                  )}
 
                  {verifyResult && (
                     <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
-                       <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-white/10 relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 p-6">
-                             <CheckCircle2 size={32} className="text-green-500 opacity-20" />
+                       <div className="bg-gradient-to-br from-[#121212] to-black p-10 rounded-[2.5rem] border border-purple-500/30 relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 p-6 opacity-20">
+                             <CheckCircle2 size={48} className="text-green-500" />
                           </div>
                           
-                          <div className="space-y-8">
+                          <div className="space-y-10 relative z-10">
                              <div>
-                                <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">CIUDADANO IDENTIFICADO</p>
+                                <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.4em] mb-3">CIUDADANO LOCALIZADO</p>
                                 <div className="flex items-center justify-between">
-                                   <h4 className="text-3xl font-black text-white uppercase italic tracking-tighter">
-                                      {verifyResult.nombre} {verifyResult.apellido}
+                                   <h4 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
+                                      {verifyResult.nombre}
                                    </h4>
-                                   <button onClick={() => copyToClipboard(`${verifyResult.nombre} ${verifyResult.apellido}`)} className="p-2 text-gray-600 hover:text-white transition-colors">
-                                      <Copy size={16} />
+                                   <button onClick={() => copyToClipboard(verifyResult.nombre)} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
+                                      <Copy size={16} className="text-purple-400" />
                                    </button>
                                 </div>
                              </div>
 
-                             <div className="grid grid-cols-2 gap-10">
+                             <div className="grid grid-cols-2 gap-8 border-t border-white/5 pt-8">
                                 <div>
-                                   <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">IDENTIFICACIÓN</p>
-                                   <p className="text-xl font-black text-purple-400 font-mono tracking-widest">{verifyResult.cedula}</p>
+                                   <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">IDENTIFICACIÓN</p>
+                                   <p className="text-2xl font-black text-purple-400 font-mono tracking-tighter">
+                                      {parseInt(verifyResult.cedula).toLocaleString()}
+                                   </p>
                                 </div>
                                 <div>
-                                   <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">NACIMIENTO</p>
-                                   <p className="text-xl font-black text-white">{verifyResult.fecha_nacimiento}</p>
-                                </div>
-                             </div>
-
-                             <div className="grid grid-cols-2 gap-10">
-                                <div>
-                                   <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">SEXO</p>
-                                   <p className="text-sm font-black text-white uppercase">{verifyResult.sexo}</p>
-                                </div>
-                                <div>
-                                   <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">ESTADO CIVIL</p>
-                                   <p className="text-sm font-black text-white uppercase">{verifyResult.estado_civil}</p>
+                                   <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">SISTEMA ORIGEN</p>
+                                   <div className="flex items-center gap-2">
+                                       <Zap size={14} className="text-yellow-500" />
+                                       <p className="text-lg font-black text-white italic">GFV NODE</p>
+                                   </div>
                                 </div>
                              </div>
                           </div>
+
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
                        </div>
+                       
+                       <button onClick={() => { setVerifyResult(null); setVerifyId(""); }} className="w-full py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-white transition-colors">Realizar Nueva Consulta</button>
                     </div>
                  )}
               </div>
