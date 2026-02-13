@@ -14,8 +14,8 @@ import {
   Lock,
   Copy,
   Info,
-  ExternalLink,
-  Settings
+  Settings,
+  Terminal
 } from 'lucide-react';
 import { supabase } from '../supabase.ts';
 
@@ -138,7 +138,6 @@ const ClientesPanel: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Copiado al portapapeles");
   };
 
   if (!isUnlocked) {
@@ -250,8 +249,8 @@ const ClientesPanel: React.FC = () => {
       </div>
 
       {showVerifyModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
-           <div className="bg-[#080808] w-full max-w-2xl rounded-[3.5rem] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
+           <div className="bg-[#080808] w-full max-w-2xl rounded-[3.5rem] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 my-auto">
               <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-purple-600/10 to-transparent">
                  <div className="flex items-center gap-6">
                     <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-600/20">
@@ -267,7 +266,7 @@ const ClientesPanel: React.FC = () => {
                  </button>
               </div>
 
-              <div className="p-12 space-y-10">
+              <div className="p-10 space-y-10">
                  <div className="flex items-center gap-4">
                     <div className="relative flex-1">
                        <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={20} />
@@ -290,31 +289,35 @@ const ClientesPanel: React.FC = () => {
                  </div>
 
                  {verifyError && (
-                    <div className="space-y-4 animate-in shake">
+                    <div className="space-y-6 animate-in shake">
                        <div className="flex items-center gap-4 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-500">
                           <AlertCircle size={24} />
-                          <p className="text-xs font-black uppercase tracking-widest">{verifyError}</p>
+                          <p className="text-[11px] font-black uppercase tracking-widest">{verifyError}</p>
                        </div>
                        
-                       {verifyError.includes("Sesión expirada") && (
-                         <div className="bg-[#121212] p-8 rounded-[2rem] border border-white/5 space-y-4">
-                            <div className="flex items-center gap-3 text-purple-400">
-                               <Settings size={18} />
-                               <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Reparación</h5>
-                            </div>
-                            <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold">
-                               1. Abre GFV en tu navegador.<br/>
-                               2. Presiona F12 &gt; pestaña "Application" &gt; Cookies.<br/>
-                               3. Copia el valor de <b>PHPSESSID</b>.<br/>
-                               4. Pégalo en Vercel como <b>GFV_COOKIE</b>.
-                            </p>
-                         </div>
-                       )}
+                       <div className="bg-[#121212] p-8 rounded-[2rem] border border-white/5 space-y-6">
+                          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                             <div className="flex items-center gap-3 text-purple-400">
+                                <Settings size={18} />
+                                <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Configuración</h5>
+                             </div>
+                          </div>
+                          <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold space-y-2">
+                             1. Abre <a href="https://app.gfv.com.py" target="_blank" className="text-purple-400 underline">GFV</a> e inicia sesión.<br/>
+                             2. Presiona F12 &gt; Application &gt; Cookies.<br/>
+                             3. Copia el valor de <b>PHPSESSID</b> y pégalo en Vercel (<b>GFV_COOKIE</b>).<br/>
+                             4. Asegúrate que <b>GFV_VERIFY_URL</b> sea el link de consulta directa.
+                          </p>
+                       </div>
 
                        {debugInfo && (
-                         <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[9px] text-gray-600 overflow-hidden">
-                           <p className="mb-2 opacity-50">Respuesta cruda del servidor:</p>
-                           {debugInfo}
+                         <div className="space-y-2">
+                           <div className="flex items-center gap-2 text-[9px] font-black text-gray-700 uppercase tracking-widest">
+                              <Terminal size={14} /> Respuesta Cruda del Servidor (Error Debug)
+                           </div>
+                           <div className="p-4 bg-black/80 rounded-xl border border-white/5 font-mono text-[9px] text-gray-500 overflow-hidden break-all max-h-[150px] overflow-y-auto">
+                             {debugInfo}
+                           </div>
                          </div>
                        )}
                     </div>
@@ -365,7 +368,7 @@ const ClientesPanel: React.FC = () => {
                        </div>
                        
                        <div className="flex items-center gap-3 text-[9px] font-black text-gray-700 uppercase tracking-[0.2em] bg-white/5 p-4 rounded-2xl border border-white/5">
-                          <Info size={14} /> Sistema de Inteligencia Híbrido (HTML/JSON Scraper v2.1)
+                          <Info size={14} /> Sistema de Inteligencia Híbrido (Dynamic Browser Simulation v3.0)
                        </div>
                     </div>
                  )}
