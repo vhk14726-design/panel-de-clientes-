@@ -15,7 +15,8 @@ import {
   Copy,
   Info,
   Settings,
-  Terminal
+  Terminal,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '../supabase.ts';
 
@@ -299,21 +300,25 @@ const ClientesPanel: React.FC = () => {
                           <div className="flex items-center justify-between border-b border-white/5 pb-4">
                              <div className="flex items-center gap-3 text-purple-400">
                                 <Settings size={18} />
-                                <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Configuración</h5>
+                                <h5 className="text-[10px] font-black uppercase tracking-widest">Guía de Configuración GFV</h5>
                              </div>
                           </div>
-                          <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold space-y-2">
-                             1. Abre <a href="https://app.gfv.com.py" target="_blank" className="text-purple-400 underline">GFV</a> e inicia sesión.<br/>
-                             2. Presiona F12 &gt; Application &gt; Cookies.<br/>
-                             3. Copia el valor de <b>PHPSESSID</b> y pégalo en Vercel (<b>GFV_COOKIE</b>).<br/>
-                             4. Asegúrate que <b>GFV_VERIFY_URL</b> sea el link de consulta directa.
+                          <p className="text-gray-500 text-[10px] leading-relaxed uppercase font-bold space-y-3">
+                             1. En GFV, haz una consulta y ve a la pestaña <b>Network</b>.<br/>
+                             2. Busca la petición con el número de cédula.<br/>
+                             3. Haz clic derecho &gt; <b>Copy URL</b>.<br/>
+                             4. Pega esa URL en <b>GFV_VERIFY_URL</b> de Vercel (quítale el número de CI al final).<br/>
+                             5. No olvides actualizar el <b>GFV_COOKIE</b> con el PHPSESSID actual.
                           </p>
+                          <a href="https://app.gfv.com.py/" target="_blank" className="flex items-center justify-center gap-2 w-full py-4 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all border border-white/5">
+                             Ir a GFV <ExternalLink size={14} />
+                          </a>
                        </div>
 
                        {debugInfo && (
                          <div className="space-y-2">
                            <div className="flex items-center gap-2 text-[9px] font-black text-gray-700 uppercase tracking-widest">
-                              <Terminal size={14} /> Respuesta Cruda del Servidor (Error Debug)
+                              <Terminal size={14} /> Vista Previa de la Respuesta (Debug)
                            </div>
                            <div className="p-4 bg-black/80 rounded-xl border border-white/5 font-mono text-[9px] text-gray-500 overflow-hidden break-all max-h-[150px] overflow-y-auto">
                              {debugInfo}
@@ -365,10 +370,6 @@ const ClientesPanel: React.FC = () => {
                                 </div>
                              </div>
                           </div>
-                       </div>
-                       
-                       <div className="flex items-center gap-3 text-[9px] font-black text-gray-700 uppercase tracking-[0.2em] bg-white/5 p-4 rounded-2xl border border-white/5">
-                          <Info size={14} /> Sistema de Inteligencia Híbrido (Dynamic Browser Simulation v3.0)
                        </div>
                     </div>
                  )}
