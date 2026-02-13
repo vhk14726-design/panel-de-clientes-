@@ -98,7 +98,7 @@ const ClientesPanel: React.FC = () => {
     setVerifyError(null);
     setVerifyResult(null);
     
-    const steps = ["Iniciando protocolos...", "Conectando con GFV Node...", "Buscando hash de identidad...", "Extrayendo metadatos..."];
+    const steps = ["Iniciando protocolos...", "Conectando con GFV Node...", "Analizando Identidad...", "Extrayendo Datos..."];
     
     for (const step of steps) {
         setVerifyStep(step);
@@ -361,7 +361,7 @@ const ClientesPanel: React.FC = () => {
                                    </div>
                                    <div className="space-y-2">
                                       <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2">
-                                         <Calendar size={10} /> Nacimiento
+                                         <Calendar size={10} /> Fecha de Nacimiento
                                       </p>
                                       <p className="text-xl font-black text-white italic">
                                          {verifyResult.fecha_nacimiento}
@@ -371,7 +371,7 @@ const ClientesPanel: React.FC = () => {
                              </div>
 
                              <button 
-                                onClick={() => copyToClipboard(`${verifyResult.nombres} ${verifyResult.apellidos} | CI: ${verifyResult.cedula}`)}
+                                onClick={() => copyToClipboard(`${verifyResult.nombres} ${verifyResult.apellidos} | CI: ${verifyResult.cedula} | Nacimiento: ${verifyResult.fecha_nacimiento}`)}
                                 className="w-full flex items-center justify-center gap-3 py-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all text-[10px] font-black text-white uppercase tracking-widest"
                              >
                                 <Copy size={14} className="text-purple-400" /> Copiar Perfil Completo

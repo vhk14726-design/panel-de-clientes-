@@ -41,64 +41,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const rawHtml = await response.text();
     
-    // Limpieza agresiva de comentarios HTML para evitar el error "-->"
+    // Limpieza profunda de comentarios HTML
     const sanitizedHtml = rawHtml.replace(/<!--[\s\S]*?-->/g, "");
 
-    const cleanT = (s: string) => {
-        return s.replace(/<[^>]*>/g, '') 
-                .replace(/&nbsp;/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-    };
-
     /**
-     * Lógica V12: Busca la etiqueta y luego extrae todos los values de inputs 
-     * que le sigan hasta encontrar la siguiente sección o fin de bloque.
+     * Lógica V13: Captura selectiva basada en etiquetas exclusivas
      */
-    const extractMultiField = (label: string) => {
-        // Encontrar la posición de la etiqueta
-        const labelIdx = sanitizedHtml.toLowerCase().indexOf(label.toLowerCase());
-        if (labelIdx === -1) return "";
+    const extractV13 = (label: string) => {
+        const lowerLabel = label.toLowerCase();
+        const labelPos = sanitizedHtml.toLowerCase().indexOf(lowerLabel);
+        if (labelPos === -1) return "";
 
-        // Cortar el HTML desde la etiqueta hasta una distancia razonable (p.ej. 1000 caracteres)
-        const subHtml = sanitizedHtml.substring(labelIdx, labelIdx + 1000);
+        // Extraemos un bloque de 800 caracteres tras la etiqueta
+        const chunk = sanitizedHtml.substring(labelPos, labelPos + 800);
         
-        // Buscar todos los value="..." en los inputs siguientes
-        const inputRegex = /value\s*=\s*["']([^"']*)["']/gi;
+        // Definimos los límites para no saltar a otros campos
+        const stopLabels = ["nombres", "apellidos", "fecha de nacimiento", "sexo", "nacionalidad", "estado civil", "calle 1", "domicilio"];
+        const otherLabels = stopLabels.filter(l => l !== lowerLabel);
+        const boundaryRegex = new RegExp(`(?:${otherLabels.join("|")})`, "i");
+        
+        // El área de búsqueda termina donde empieza la siguiente etiqueta
+        const boundaryMatch = chunk.substring(label.length).search(boundaryRegex);
+        const searchZone = boundaryMatch !== -1 ? chunk.substring(0, boundaryMatch + label.length) : chunk;
+
+        // Buscamos todos los atributos 'value' en este bloque
+        const valueRegex = /value\s*=\s*["']([^"']*)["']/gi;
         let matches;
         const results: string[] = [];
-        
-        // Solo tomamos los inputs antes de que aparezca otra etiqueta de campo mayor
-        const nextLabelIdx = subHtml.substring(10).search(/Nombres|Apellidos|Fecha|Sexo|Nacionalidad/i);
-        const limitHtml = nextLabelIdx !== -1 ? subHtml.substring(0, nextLabelIdx + 10) : subHtml;
 
-        while ((matches = inputRegex.exec(limitHtml)) !== null) {
+        while ((matches = valueRegex.exec(searchZone)) !== null) {
             const val = matches[1].trim();
-            if (val && !results.includes(val)) results.push(val);
-        }
-
-        // Si no encontró inputs, intentamos capturar texto plano básico como respaldo
-        if (results.length === 0) {
-            const textRegex = new RegExp(`${label}[:\s]+(?:<\/b>|<td>|<span>|<b>)?\s*([^<|\n|\r|;]+)`, 'i');
-            const tMatch = limitHtml.match(textRegex);
-            return tMatch ? cleanT(tMatch[1]) : "";
+            // Evitamos duplicados y valores basura como "-->"
+            if (val && !results.includes(val) && val !== "-->") results.push(val);
         }
 
         return results.join(" ").trim();
     };
 
-    const nombres = extractMultiField("Nombres");
-    const apellidos = extractMultiField("Apellidos");
-    const fechaNac = extractMultiField("Fecha de Nacimiento");
+    const nombres = extractV13("Nombres");
+    const apellidos = extractV13("Apellidos");
+    const fechaNac = extractV13("Fecha de Nacimiento");
 
     if (nombres || apellidos) {
         return res.status(200).json({
             ok: true,
             result: {
-                nombres: nombres.toUpperCase() || "NO ENCONTRADO",
-                apellidos: apellidos.toUpperCase() || "NO ENCONTRADO",
+                nombres: nombres.toUpperCase(),
+                apellidos: apellidos.toUpperCase(),
                 cedula: cleanCI,
-                fecha_nacimiento: fechaNac || "NO DISPONIBLE",
+                fecha_nacimiento: fechaNac || "NO ENCONTRADO",
                 estado: "ACTIVO"
             }
         });
@@ -106,11 +97,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(404).json({ 
         ok: false, 
-        mensaje: "No se pudieron localizar datos válidos en la respuesta de GFV.",
-        debug: sanitizedHtml.substring(0, 300)
+        mensaje: "No se pudieron localizar datos en la respuesta. Revisa el PHPSESSID.",
+        debug: sanitizedHtml.substring(0, 200)
     });
 
   } catch (e: any) {
-    return res.status(500).json({ ok: false, mensaje: "Error crítico: " + e.message });
+    return res.status(500).json({ ok: false, mensaje: "Error de servidor: " + e.message });
   }
 }
